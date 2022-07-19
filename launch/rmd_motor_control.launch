@@ -1,0 +1,3 @@
+<launch>
+  <node name="rmd_motor_control" pkg="rmd_motor_control" type="rmd_motor_controller" output="screen"/>
+</launch>
