@@ -32,6 +32,8 @@ using Eigen::Matrix3d;
 
 #define inner_dt 0.001
 
+#define Motor_num 3
+
 
 
 namespace Dynamics
@@ -40,7 +42,6 @@ namespace Dynamics
     {
         double dt = 0.002;
         double time = 0;
-        double trajectory = 0;
 
         double cnt_time = 0;
         unsigned int cnt = 0;   
@@ -50,24 +51,41 @@ namespace Dynamics
         JMDynamics();
         //~JMDynamics();
 
-        VectorXd ref_th = VectorXd::Zero(3);
-        VectorXd th = VectorXd::Zero(3);
-        VectorXd th_dot = VectorXd::Zero(3);
-        VectorXd zero_vector_3 = VectorXd::Zero(3);
+        VectorXd ref_th = VectorXd::Zero(Motor_num);
+        VectorXd th = VectorXd::Zero(Motor_num);
+        VectorXd th_dot = VectorXd::Zero(Motor_num);
+        VectorXd zero_vector_3 = VectorXd::Zero(Motor_num);
 
         int count = 0;
-        int step_time = 5;
+        int step_time = 4;
+        double Ex = 0;
 
-        VectorXd joint_torque = VectorXd::Zero(3);
+        double ee_x, ee_y, ee_z, phi;
 
-        VectorXd gain_p_joint_space = VectorXd::Zero(3);
-        VectorXd gain_d_joint_space = VectorXd::Zero(3);
+        int total_loop_count = 0;
+        int loop_counter = 0;
+
+        double cos_theta2, sin_theta2;
+
+        double l_1 = 0.27;
+        double l_2 = 0.27;
+        double l_3 = 0.0815;
+        double cl_1 = 0.135;
+        double cl_2 = 0.135;
+        double cl_3 = 0.05;
+
+        VectorXd joint_torque = VectorXd::Zero(Motor_num);
+        VectorXd ref_joint_torque = VectorXd::Zero(Motor_num);
+
+        VectorXd gain_p_joint_space = VectorXd::Zero(4);
+        VectorXd gain_d_joint_space = VectorXd::Zero(Motor_num);
 
         VectorXd GetTorque();
         void SetTheta(VectorXd);
         void SetThetaDot(VectorXd);
         void GenerateTorque_JointSpacePD();
         void GenerateTrajectory();
+        void InitialtoActivation();
     };
 }
 

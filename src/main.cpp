@@ -15,7 +15,7 @@
 
 static void *rt_motion_thread(void *arg);
 pRBCORE_SHM sharedData;
-rmd_motor _DEV_MC[3];
+rmd_motor _DEV_MC[12];
 Dynamics::JMDynamics dynamics;
 Motor_Controller motor_ctrl;
 // FILE *Joint_Space_PD_data1;
@@ -27,6 +27,7 @@ void SwitchGainP(const std_msgs::Float32MultiArrayConstPtr &msg)
     dynamics.gain_p_joint_space[0] = msg -> data.at(0);
     dynamics.gain_p_joint_space[1] = msg -> data.at(1);
     dynamics.gain_p_joint_space[2] = msg -> data.at(2);
+    // dynamics.gain_p_joint_space[3] = msg -> data.at(3);
 }
 
 void SwitchGainD(const std_msgs::Float32MultiArrayConstPtr &msg)
@@ -34,6 +35,7 @@ void SwitchGainD(const std_msgs::Float32MultiArrayConstPtr &msg)
     dynamics.gain_d_joint_space[0] = msg -> data.at(0);
     dynamics.gain_d_joint_space[1] = msg -> data.at(1);
     dynamics.gain_d_joint_space[2] = msg -> data.at(2);
+    // dynamics.gain_p_joint_space[3] = msg -> data.at(3);
 }
 
 void InitializePose(const std_msgs::BoolConstPtr &msg){
@@ -77,9 +79,10 @@ int main(int argc, char *argv[])
         for (uint8_t i = 0; i<3; i ++)
         {
             msg.name.push_back(joints_name.at(i));
+            msg.position.push_back(dynamics.ref_th[i]);            
             msg.position.push_back(dynamics.th[i]);
             msg.velocity.push_back(dynamics.th_dot[i]);
-            msg.effort.push_back(dynamics.joint_torque[i]);
+            msg.effort.push_back(dynamics.joint_torque[i]);            
         }
         joint_states_pub_.publish(msg);
         
@@ -104,10 +107,14 @@ void *rt_motion_thread(void *arg){
 
     while(true){
         clock_gettime(CLOCK_REALTIME, &TIME_TIC);
-
-        if(loop_count < 2002) loop_count++;
         
-        if(!is_first_loop && loop_count > 1000){
+        if(is_first_loop){
+            motor_ctrl.EnableMotor();
+            timespec_add_us(&TIME_NEXT, 4 * 1000 * 1000);
+            is_first_loop = false;
+            loop_count++;
+        }
+        else if(loop_count > 1000 ){
             dynamics.GenerateTrajectory();
             // jm_dynamics.SetTheta(motor_ctrl.GetTheta());
             dynamics.SetTheta(motor_ctrl.GetJointTheta());
@@ -116,19 +123,15 @@ void *rt_motion_thread(void *arg){
             motor_ctrl.SetTorque(dynamics.GetTorque());
             // motor_ctrl.SetTorque(jm_dynamics.zero_vector_6);
 
-            // fprintf(Joint_Space_PD_data1, "%lf %lf %lf \n", jm_dynamics.th_joint[0], jm_dynamics.ref_th[0], jm_dynamics.joint_torque[0]);         
-            // if(loop_count > 1000000) fclose(Joint_Space_PD_data1);
+            // fprintf(Joint_Space_PD_data1, " %lf %lf %lf %lf \n", dynamics.ref_th[0], dynamics.th[0], dynamics.ref_th[1], dynamics.th[1]);         
+            // if(loop_count > 100000) fclose(Joint_Space_PD_data1);
+        }
+        else {
+            loop_count++;
         }
 
         clock_gettime(CLOCK_REALTIME, &TIME_NOW);
-        timespec_add_us(&TIME_NEXT, PERIOD_US);
-
-        if(is_first_loop){
-            motor_ctrl.EnableMotor();
-            timespec_add_us(&TIME_NEXT, 4 * 1000 * 1000);
-            is_first_loop = false;
-        }
-        
+        timespec_add_us(&TIME_NEXT, PERIOD_US);        
 
         clock_nanosleep(CLOCK_REALTIME, TIMER_ABSTIME, &TIME_NEXT, NULL);
         if(timespec_cmp(&TIME_NOW, &TIME_NEXT) > 0){

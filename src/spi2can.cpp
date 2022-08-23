@@ -81,32 +81,33 @@ void *spi2can::spi2can_thread(void *arg){
     clock_gettime(CLOCK_REALTIME, &TIME_NEXT);
     while(true){
 
+        for(int j=0; j<8; j++){
+            rmd_can::reference_msg[0].data[j] = _DEV_MC[0].ref_data[j];
+            rmd_can::reference_msg[1].data[j] = _DEV_MC[1].ref_data[j];
+            rmd_can::reference_msg[2].data[j] = _DEV_MC[2].ref_data[j];
+            rmd_can::reference_msg[3].data[j] = _DEV_MC[3].ref_data[j];
+            rmd_can::reference_msg[4].data[j] = _DEV_MC[4].ref_data[j];
+            rmd_can::reference_msg[5].data[j] = _DEV_MC[5].ref_data[j];
+        }
 
-        // data --------------------------------------------------
-
-        // CAN CH A/0 - 0, 1, 2
-        // CAN CH B/1 - 3, 4, 5
-        // CAN CH C/2 - 6, 7, 8
-        // CAN CH D/3 - 9, 10, 11
-
-        // HRRLAB - SPI1(CAN CH A, B or 0, 1), Send reference / Real time
         for(int i=0; i<6; i++){
-            if(sharedData->rmd_motor_run_flag[i]) {
-                for(int j=0; j<8; j++){
-                    rmd_can::reference_msg[i].data[j] = _DEV_MC[i].ref_data[j];
-                }
+            if(sharedData->rmd_motor_run_flag[i]){
                 pthread_mutex_lock(&rmd_can::mutex_reference[i]);
                 memcpy(&(tx_1[i*12]), &(rmd_can::reference_msg[i]), 12);
                 pthread_mutex_unlock(&rmd_can::mutex_reference[i]);
             }
         }
 
-        // HRRLAB - SPI2(CAN CH C, D or 2, 3), Send reference / Real time
+        for(int j=0; j<8; j++){
+            rmd_can::reference_msg[6].data[j] = _DEV_MC[6].ref_data[j];
+            rmd_can::reference_msg[7].data[j] = _DEV_MC[7].ref_data[j];
+            rmd_can::reference_msg[8].data[j] = _DEV_MC[8].ref_data[j];
+            rmd_can::reference_msg[9].data[j] = _DEV_MC[9].ref_data[j];
+            rmd_can::reference_msg[10].data[j] = _DEV_MC[10].ref_data[j];
+        }
+
         for(int i=0; i<6; i++){
-            if(sharedData->rmd_motor_run_flag[i+6]) {
-                for(int j=0; j<8; j++){
-                    rmd_can::reference_msg[i+6].data[j] = _DEV_MC[i+6].ref_data[j];
-                }
+            if(sharedData->rmd_motor_run_flag[i+6]){
                 pthread_mutex_lock(&rmd_can::mutex_reference[i+6]);
                 memcpy(&(tx_2[i*12]), &(rmd_can::reference_msg[i+6]), 12);
                 pthread_mutex_unlock(&rmd_can::mutex_reference[i+6]);
@@ -132,14 +133,13 @@ void *spi2can::spi2can_thread(void *arg){
                 recv_buf1.remove(0, 12);
 
                 if(id>=0x140 && id<=0x140+MAX_MC){
-                    int bno = id-0x140;
+                    int bno = id-0x141;
                     count[bno]++;
                     if(recv_data1[0] == 0xA1){
                         for(int j=0; j<dlc; j++){
                             _DEV_MC[bno].torque_data[j] = recv_data1[j];
                         }
                         _DEV_MC[bno].Board_SetTorqueDataX();
-                        // std::cout << "Recieved message " << (int)_DEV_MC[5].torque_data[6] << std::endl;
                     }
                 }else{
                     ST_CAN temp_can;
@@ -154,7 +154,7 @@ void *spi2can::spi2can_thread(void *arg){
             }
         }
 
-        // HRRLAB - SPI2(CAN CH C, D or 2, 3), CAN Recieve status
+        //HRRLAB - SPI2(CAN CH C, D or 2, 3), CAN Recieve status
         while(recv_buf2.size() >= 12){
             if(uchar(recv_buf2[0]) == 0x89){
 
