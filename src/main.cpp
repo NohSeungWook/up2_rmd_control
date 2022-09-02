@@ -18,7 +18,7 @@ pRBCORE_SHM sharedData;
 rmd_motor _DEV_MC[12];
 Dynamics::JMDynamics dynamics;
 Motor_Controller motor_ctrl;
-// FILE *Joint_Space_PD_data1;
+FILE *Joint_Space_PD_data1;
 
 
 
@@ -42,6 +42,13 @@ void InitializePose(const std_msgs::BoolConstPtr &msg){
     if(msg->data) for(uint8_t i=0; i<3; i++) _DEV_MC[i].first_loop_updateTheta = true;
 }
 
+void SwitchTrajectory(const std_msgs::Int32 &msg)
+{
+    dynamics.count=0;
+    dynamics.ux = 0.27 * cos(dynamics.ref_th[0])+ 0.27 * cos(dynamics.ref_th[0] + dynamics.ref_th[1]) +0.0815* cos(dynamics.ref_th[0] + dynamics.ref_th[1] + dynamics.ref_th[2]);
+    dynamics.Tra_num = msg.data;
+}
+
 int main(int argc, char *argv[])
 {
     ros::init(argc, argv, "rmd_motor_controller");
@@ -59,7 +66,10 @@ int main(int argc, char *argv[])
     ros::Subscriber pose_initializer_sub_;
     pose_initializer_sub_ = node_handle_.subscribe("rmd/initialize_pose", 10, InitializePose);
 
-    // Joint_Space_PD_data1 = fopen("/home/rainbow/catkin_ws/src/data1.dat","w");
+    ros::Subscriber trajectory_sellector_sub_;
+    trajectory_sellector_sub_ = node_handle_.subscribe("rmd/trajctory_sellect", 10, SwitchTrajectory);
+
+    Joint_Space_PD_data1 = fopen("/home/rainbow/catkin_ws/src/data1.dat","w");
 
     spi2can::getInstance();
 
@@ -82,6 +92,7 @@ int main(int argc, char *argv[])
             msg.position.push_back(dynamics.ref_th[i]);            
             msg.position.push_back(dynamics.th[i]);
             msg.velocity.push_back(dynamics.th_dot[i]);
+            msg.velocity.push_back((dynamics.ref_th[i] - dynamics.th[i]) * 57.2958);
             msg.effort.push_back(dynamics.joint_torque[i]);            
         }
         joint_states_pub_.publish(msg);
@@ -101,6 +112,7 @@ void *rt_motion_thread(void *arg){
     struct timespec TIME_TOC;
     int loop_count = 0;
 
+
     clock_gettime(CLOCK_REALTIME, &TIME_NEXT);
 
     bool is_first_loop = true;
@@ -115,16 +127,19 @@ void *rt_motion_thread(void *arg){
             loop_count++;
         }
         else if(loop_count > 1000 ){
-            dynamics.GenerateTrajectory();
+            //dynamics.GenerateTrajectory();
+            dynamics.TrajectorySellector(dynamics.Tra_num);
             // jm_dynamics.SetTheta(motor_ctrl.GetTheta());
             dynamics.SetTheta(motor_ctrl.GetJointTheta());
             dynamics.SetThetaDot(motor_ctrl.GetThetaDot());
-            dynamics.GenerateTorque_JointSpacePD();
+            dynamics.GenerateTorque_JointSpacePV();
             motor_ctrl.SetTorque(dynamics.GetTorque());
             // motor_ctrl.SetTorque(jm_dynamics.zero_vector_6);
 
-            // fprintf(Joint_Space_PD_data1, " %lf %lf %lf %lf \n", dynamics.ref_th[0], dynamics.th[0], dynamics.ref_th[1], dynamics.th[1]);         
-            // if(loop_count > 100000) fclose(Joint_Space_PD_data1);
+            fprintf(Joint_Space_PD_data1, " %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf \n", \
+            dynamics.ref_th[0], dynamics.th[0], dynamics.ref_th[1], dynamics.th[1],  dynamics.ref_th[2], dynamics.th[2], \
+            dynamics.th_dot[0], dynamics.th_dot[1], dynamics.th_dot[2], dynamics.joint_torque[0], dynamics.joint_torque[1], dynamics.joint_torque[2]);         
+            if(loop_count > 100000) fclose(Joint_Space_PD_data1);
         }
         else {
             loop_count++;

@@ -52,18 +52,23 @@ namespace Dynamics
         //~JMDynamics();
 
         VectorXd ref_th = VectorXd::Zero(Motor_num);
+        VectorXd des_th = VectorXd::Zero(Motor_num);
         VectorXd th = VectorXd::Zero(Motor_num);
         VectorXd th_dot = VectorXd::Zero(Motor_num);
+        VectorXd th_dotold = VectorXd::Zero(Motor_num);
         VectorXd zero_vector_3 = VectorXd::Zero(Motor_num);
 
         int count = 0;
         int step_time = 4;
+        
+
         double Ex = 0;
+        double ux = 0;
+
 
         double ee_x, ee_y, ee_z, phi;
 
-        int total_loop_count = 0;
-        int loop_counter = 0;
+        int Tra_num = 0;
 
         double cos_theta2, sin_theta2;
 
@@ -83,9 +88,11 @@ namespace Dynamics
         VectorXd GetTorque();
         void SetTheta(VectorXd);
         void SetThetaDot(VectorXd);
-        void GenerateTorque_JointSpacePD();
+        void GenerateTorque_JointSpacePV();
         void GenerateTrajectory();
-        void InitialtoActivation();
+        void GenerateTrajectory_InitialPose();
+        void GenerateTrajectory_WalkReadyPose();
+        void TrajectorySellector(int i);
     };
 }
 

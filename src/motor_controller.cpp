@@ -64,3 +64,18 @@ void Motor_Controller::SetTorque(VectorXd tau){
     _DEV_MC[i].ref_data[7] = 0x00 & 0xFF;
   }
 }
+
+// void Motor_Controller::SetTorque(VectorXd tau){
+//   for(uint8_t i=0; i<3; i++) {
+    
+//     _DEV_MC[i].ref_data[0] = 0xb2 & 0xFF;
+//     _DEV_MC[i].ref_data[1] = 0x00 & 0xFF;
+//     _DEV_MC[i].ref_data[2] = 0x00 & 0xFF;
+//     _DEV_MC[i].ref_data[3] = 0x00 & 0xFF;
+//     _DEV_MC[i].ref_data[4] = (param     ) & 0xFF;
+//     _DEV_MC[i].ref_data[5] = (param >> 8) & 0xFF;
+//     _DEV_MC[i].ref_data[6] = 0x00 & 0xFF;
+//     _DEV_MC[i].ref_data[7] = 0x00 & 0xFF;
+//   }
+// }
+
