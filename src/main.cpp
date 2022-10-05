@@ -18,7 +18,7 @@ pRBCORE_SHM sharedData;
 rmd_motor _DEV_MC[12];
 Dynamics::JMDynamics dynamics;
 Motor_Controller motor_ctrl;
-FILE *Joint_Space_PD_data1;
+//FILE *Joint_Space_PD_data2;
 
 
 
@@ -27,25 +27,40 @@ void SwitchGainP(const std_msgs::Float32MultiArrayConstPtr &msg)
     dynamics.gain_p_joint_space[0] = msg -> data.at(0);
     dynamics.gain_p_joint_space[1] = msg -> data.at(1);
     dynamics.gain_p_joint_space[2] = msg -> data.at(2);
-    // dynamics.gain_p_joint_space[3] = msg -> data.at(3);
+    dynamics.gain_p_joint_space[3] = msg -> data.at(0);
+    dynamics.gain_p_joint_space[4] = msg -> data.at(1);
+    dynamics.gain_p_joint_space[5] = msg -> data.at(2);
+    
 }
-
 void SwitchGainD(const std_msgs::Float32MultiArrayConstPtr &msg)
 {
     dynamics.gain_d_joint_space[0] = msg -> data.at(0);
     dynamics.gain_d_joint_space[1] = msg -> data.at(1);
     dynamics.gain_d_joint_space[2] = msg -> data.at(2);
-    // dynamics.gain_p_joint_space[3] = msg -> data.at(3);
+    dynamics.gain_d_joint_space[3] = msg -> data.at(0);
+    dynamics.gain_d_joint_space[4] = msg -> data.at(1);
+    dynamics.gain_d_joint_space[5] = msg -> data.at(2);
+   
 }
 
+//let the current angle as initial angle
 void InitializePose(const std_msgs::BoolConstPtr &msg){
-    if(msg->data) for(uint8_t i=0; i<3; i++) _DEV_MC[i].first_loop_updateTheta = true;
+    if(msg->data) for(uint8_t i=0; i<6; i++) _DEV_MC[i].first_loop_updateTheta = true;
 }
 
+//write motor inner gain to ROM
+void WriteToROM(const std_msgs::BoolConstPtr &msg){
+    motor_ctrl.WritePIDtoROM();
+}
+
+//sellect motion
 void SwitchTrajectory(const std_msgs::Int32 &msg)
 {
+    //initialize count
     dynamics.count=0;
-    dynamics.ux = 0.27 * cos(dynamics.ref_th[0])+ 0.27 * cos(dynamics.ref_th[0] + dynamics.ref_th[1]) +0.0815* cos(dynamics.ref_th[0] + dynamics.ref_th[1] + dynamics.ref_th[2]);
+    //get current ee's poisiton/angle
+    dynamics.ux= 0.27 * cos(dynamics.ref_th[0])+ 0.274 * cos(dynamics.ref_th[0] + dynamics.ref_th[1]) +0.0815* cos(dynamics.ref_th[0] + dynamics.ref_th[1] + dynamics.ref_th[2]);
+    //dynamics.ux_r = 0.27 * cos(dynamics.ref_th[3])+ 0.274 * cos(dynamics.ref_th[3] + dynamics.ref_th[4]) +0.0815* cos(dynamics.ref_th[3] + dynamics.ref_th[4] + dynamics.ref_th[5]);
     dynamics.Tra_num = msg.data;
 }
 
@@ -69,7 +84,10 @@ int main(int argc, char *argv[])
     ros::Subscriber trajectory_sellector_sub_;
     trajectory_sellector_sub_ = node_handle_.subscribe("rmd/trajctory_sellect", 10, SwitchTrajectory);
 
-    Joint_Space_PD_data1 = fopen("/home/rainbow/catkin_ws/src/data1.dat","w");
+    ros::Subscriber Write_PID_gain_to_ROM_sub_;
+    Write_PID_gain_to_ROM_sub_ = node_handle_.subscribe("rmd/Write_PID_gain_to_ROM_sub_", 10, WriteToROM);
+
+    //Joint_Space_PD_data2 = fopen("/home/rainbow/catkin_ws/src/data1.dat","w");
 
     spi2can::getInstance();
 
@@ -84,16 +102,15 @@ int main(int argc, char *argv[])
         sensor_msgs::JointState msg;
         msg.header.stamp = ros::Time::now();
 
-        std::vector<string> joints_name = {"joint1", "joint2", "joint3"};
+        std::vector<string> joints_name = {"joint1", "joint2", "joint3", "joint4", "joint5", "joint6"};
 
-        for (uint8_t i = 0; i<3; i ++)
+        for (uint8_t i = 0; i<6; i ++)
         {
-            msg.name.push_back(joints_name.at(i));
-            msg.position.push_back(dynamics.ref_th[i]);            
-            msg.position.push_back(dynamics.th[i]);
-            msg.velocity.push_back(dynamics.th_dot[i]);
-            msg.velocity.push_back((dynamics.ref_th[i] - dynamics.th[i]) * 57.2958);
-            msg.effort.push_back(dynamics.joint_torque[i]);            
+            msg.name.push_back(joints_name.at(i));//joint name msg
+            msg.position.push_back(dynamics.ref_th[i]);//reference angle msg
+            msg.position.push_back(dynamics.th[i]);//actual angle msg
+            msg.velocity.push_back(dynamics.th_dot[i]);// actual angle speed
+            msg.effort.push_back(dynamics.joint_torque[i]);//reference torque msg        
         }
         joint_states_pub_.publish(msg);
         
@@ -126,20 +143,17 @@ void *rt_motion_thread(void *arg){
             is_first_loop = false;
             loop_count++;
         }
-        else if(loop_count > 1000 ){
-            //dynamics.GenerateTrajectory();
-            dynamics.TrajectorySellector(dynamics.Tra_num);
-            // jm_dynamics.SetTheta(motor_ctrl.GetTheta());
+        else if(loop_count > 1000 ){       
+            dynamics.TrajectorySellector(dynamics.Tra_num);           
             dynamics.SetTheta(motor_ctrl.GetJointTheta());
             dynamics.SetThetaDot(motor_ctrl.GetThetaDot());
             dynamics.GenerateTorque_JointSpacePV();
             motor_ctrl.SetTorque(dynamics.GetTorque());
-            // motor_ctrl.SetTorque(jm_dynamics.zero_vector_6);
+            
 
-            fprintf(Joint_Space_PD_data1, " %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf \n", \
-            dynamics.ref_th[0], dynamics.th[0], dynamics.ref_th[1], dynamics.th[1],  dynamics.ref_th[2], dynamics.th[2], \
-            dynamics.th_dot[0], dynamics.th_dot[1], dynamics.th_dot[2], dynamics.joint_torque[0], dynamics.joint_torque[1], dynamics.joint_torque[2]);         
-            if(loop_count > 100000) fclose(Joint_Space_PD_data1);
+            //fprintf(Joint_Space_PD_data2, " %lf %lf %lf %lf %lf %lf \n", dynamics.th[0], dynamics.th[1], dynamics.th[2],\
+            dynamics.th[3], dynamics.th[4], dynamics.th[5]);         
+            //if(loop_count > 100000) fclose(Joint_Space_PD_data2);
         }
         else {
             loop_count++;

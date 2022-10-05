@@ -155,8 +155,8 @@ void rmd_motor::Board_GetEncData2(void) {
 }
 
 void rmd_motor::Board_SetTorqueDataX(void) {
-    // int temp_torque = (int)(torque_data[2] | (torque_data[3]<<8));
-    // _torque_ctrl_torque_fdback = temp_torque;
+    //int temp_torque = (int)(torque_data[2] | (torque_data[3]<<8));
+    //_torque_ctrl_torque_fdback = temp_torque;
     int temp_speed = (int)(torque_data[4] | (torque_data[5]<<8));
     if(temp_speed & 0x80000) temp_speed |= 0xFFF00000;
     if(temp_speed > 30000) temp_speed -= 65535;

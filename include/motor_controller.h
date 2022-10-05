@@ -44,6 +44,8 @@ public:
   void SetTorque(VectorXd tau);  
   void SetPosition(VectorXd theta);  
   void EnableMotor();
+  void EmergencyMotorOff();
+  void WritePIDtoROM();
 };
 
 
