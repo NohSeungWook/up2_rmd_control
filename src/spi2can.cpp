@@ -83,11 +83,11 @@ void *spi2can::spi2can_thread(void *arg){
 
         for(int j=0; j<8; j++){
             rmd_can::reference_msg[0].data[j] = _DEV_MC[0].ref_data[j];
-            rmd_can::reference_msg[1].data[j] = _DEV_MC[1].ref_data[j];
+            rmd_can::reference_msg[1].data[j] = _DEV_MC[1].ref_data[j]; // **
             rmd_can::reference_msg[2].data[j] = _DEV_MC[2].ref_data[j];
-            // rmd_can::reference_msg[3].data[j] = _DEV_MC[3].ref_data[j];
-            // rmd_can::reference_msg[4].data[j] = _DEV_MC[4].ref_data[j];
-            // rmd_can::reference_msg[5].data[j] = _DEV_MC[5].ref_data[j];
+            rmd_can::reference_msg[3].data[j] = _DEV_MC[3].ref_data[j];
+            // rmd_can::reference_msg[4].data[j] = _DEV_MC[1].ref_data[j];
+            // rmd_can::reference_msg[5].data[j] = _DEV_MC[2].ref_data[j];
         }
 
         for(int i=0; i<6; i++){
@@ -99,10 +99,10 @@ void *spi2can::spi2can_thread(void *arg){
         }
 
         for(int j=0; j<8; j++){
-            rmd_can::reference_msg[6].data[j] = _DEV_MC[3].ref_data[j];
-            rmd_can::reference_msg[7].data[j] = _DEV_MC[4].ref_data[j];
-            rmd_can::reference_msg[8].data[j] = _DEV_MC[5].ref_data[j];
-            // rmd_can::reference_msg[9].data[j] = _DEV_MC[9].ref_data[j];
+            rmd_can::reference_msg[6].data[j] = _DEV_MC[4].ref_data[j]; //  **
+            rmd_can::reference_msg[7].data[j] = _DEV_MC[5].ref_data[j];
+            rmd_can::reference_msg[8].data[j] = _DEV_MC[6].ref_data[j]; //  **
+            rmd_can::reference_msg[9].data[j] = _DEV_MC[7].ref_data[j];
             // rmd_can::reference_msg[10].data[j] = _DEV_MC[10].ref_data[j];
         }
 
@@ -122,7 +122,7 @@ void *spi2can::spi2can_thread(void *arg){
 
         // HRRLAB - SPI1(CAN CH A, B or 0, 1), CAN Recieve status
         while(recv_buf1.size() >= 12){
-            if(uchar(recv_buf1[0]) == 0x89){
+            if(uchar(recv_buf1[0]) == 0x89 || uchar(recv_buf1[0]) == 0x77){
                 int dlc = recv_buf1[1];
                 unsigned int id = ((ushort)(recv_buf1[2]) | (ushort)(recv_buf1[3]<<8));
                 unsigned char recv_data1[8];
@@ -130,7 +130,8 @@ void *spi2can::spi2can_thread(void *arg){
                 recv_buf1.remove(0, 12);
                 
 
-                int bno = id-0x141;
+                int bno = id-0x241;
+            
                 count[bno]++;
                 if(recv_data1[0] == 0xA1){
                     for(int j=0; j<dlc; j++) _DEV_MC[bno].torque_data[j] = recv_data1[j];
@@ -141,23 +142,27 @@ void *spi2can::spi2can_thread(void *arg){
 
         //HRRLAB - SPI2(CAN CH C, D or 2, 3), CAN Recieve status
         while(recv_buf2.size() >= 12){
-            if(uchar(recv_buf2[0]) == 0x89){
+            if(uchar(recv_buf2[0]) == 0x89 || uchar(recv_buf2[0]) == 0x77){
 
                 int dlc = recv_buf2[1];
                 unsigned int id = ((ushort)(recv_buf2[2]) | (ushort)(recv_buf2[3]<<8));
                 unsigned char recv_data2[8];
                 for(int i=0; i<8; i++) recv_data2[i] = recv_buf2[4+i];
                 recv_buf2.remove(0, 12);
-                
 
-                int bno = id-0x141;
-                bno += 3;
+                // int bno= id -0x241;
+
+                int bno=0;
+                if (id >= 0x240) bno = id-0x241;
+                else bno = id -0x141;
+                bno += 4;
                 count[bno]++;
                 if(recv_data2[0] == 0xA1){
                     for(int j=0; j<dlc; j++) _DEV_MC[bno].torque_data[j] = recv_data2[j];
                     _DEV_MC[bno].Board_SetTorqueDataX();
                 }
-            }else recv_buf2.remove(0, 1);
+            }else 
+                recv_buf2.remove(0, 1);
         }
         
         clock_gettime(CLOCK_REALTIME, &TIME_NOW);

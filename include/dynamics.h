@@ -32,7 +32,7 @@ using Eigen::Matrix3d;
 
 #define inner_dt 0.001
 
-#define Motor_num 6
+#define Motor_num 12
 
 
 
@@ -64,17 +64,22 @@ namespace Dynamics
 
         double Ex = 0;
         double ux = 0;
+        double ux_r = 0;
+        double nh = 0;
+        double nh_r = 0;
       
 
 
-        double ee_x, ee_y, ee_z, ee_th ,phi;
+        double ee_x, ee_xr, ee_y, ee_z, ee_th ,phi;
 
         int Tra_num = 0;
+        int Gfactor = 0;
+        int Gfactor_safty = 0;
 
         double cos_theta2, sin_theta2;
 
         double l_1 = 0.27;
-        double l_2 = 0.274;
+        double l_2 = 0.272;
         double l_3 = 0.0815;
         double cl_1 = 0.135;
         double cl_2 = 0.135;
@@ -89,9 +94,9 @@ namespace Dynamics
         VectorXd GetTorque();
         void SetTheta(VectorXd);
         void SetThetaDot(VectorXd);
-        void GenerateTorque_JointSpacePV();
+        void GenerateTorque_JointSpacePV(int i);
         void GenerateTrajectory();
-        void SolveIK(double x, double y, double th);
+        void SolveIK(double x, double y, double th, int jn1, int jn2, int jn3);
         void GenerateNonTrajectory();
         void GenerateTrajectory_InitialPose();
         void GenerateTrajectory_WalkReadyPose();
